@@ -424,5 +424,6 @@
 		}
 	}
 	
+
 	$obj = file_Confuse::getInstance();
 ?>
