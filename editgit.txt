@@ -1,0 +1,5 @@
+1.git init
+2.add repo:repo git remote add [varname] [git@github.com:username/repo.git]
+3.git add
+4.git commit
+5.git push
