@@ -141,7 +141,7 @@
 						$flag=fwrite($file,$content);
 						if(!$flag){
 							echo $url,'<br>';
-							echo 'æ–‡ä»¶æ— æ³•è¢«å†™å…¥';
+							echo 'ÎÄ¼þÎÞ·¨±»Ð´Èë';
 						}
 						fclose($file);
 					}
@@ -164,6 +164,8 @@
 			$className = '';
 			
 			$num=0;
+			
+			$useflag = false;
 			
 			for ($i=0,$count=count($data);$i<$count;$i++){
 				if(is_string($data[$i])){
@@ -193,6 +195,12 @@
 							if($classBorder == 0){
 								$classFlag = false;
 							}
+						}
+					}
+					
+					if($data[$i] == ')'){
+						if($useflag){
+							$useflag = false;
 						}
 					}
 					$str .= $data[$i];
@@ -230,33 +238,32 @@
 								$str .= $data[$i][1];
 								break;
 							}
-							
 							if($funcFlag){
-								if($glo){
-									if(!isset($this->globalZval[$key][$funcName][$data[$i][1]])){
-										if(!isset($this->varZval[$data[$i][1]])){
-											$this->varZval[$data[$i][1]] = '$_glo'.$this->num;
-											$this->num++;
+								if(!$useflag){
+									if($glo){
+										if(!isset($this->globalZval[$key][$funcName][$data[$i][1]])){
+											if(!isset($this->varZval[$data[$i][1]])){
+												$this->varZval[$data[$i][1]] = '$_glo'.$this->num;
+												$this->num++;
+											}
+											$this->globalZval[$key][$funcName][$data[$i][1]] = $this->varZval[$data[$i][1]];
 										}
-										$this->globalZval[$key][$funcName][$data[$i][1]] = $this->varZval[$data[$i][1]];
+										$data[$i][1] = $this->varZval[$data[$i][1]];
+									}else{
+										if(isset($this->globalZval[$key][$funcName][$data[$i][1]])){
+											$data[$i][1] = $this->globalZval[$key][$funcName][$data[$i][1]];
+											$str .= $data[$i][1];
+											break;
+										}elseif(!isset($this->locvarZval[$key][$funcName][$data[$i][1]])){
+											$this->locvarZval[$key][$funcName][$data[$i][1]] = '$_loc'.$num;
+											$num++;
+										}
+										$data[$i][1] = $this->locvarZval[$key][$funcName][$data[$i][1]];
 									}
-									$data[$i][1] = $this->varZval[$data[$i][1]];
-								}else{
-									if(isset($this->globalZval[$key][$funcName][$data[$i][1]])){
-										$data[$i][1] = $this->globalZval[$key][$funcName][$data[$i][1]];
-										$str .= $data[$i][1];
-										break;
-									}elseif(!isset($this->locvarZval[$key][$funcName][$data[$i][1]])){
-										$this->locvarZval[$key][$funcName][$data[$i][1]] = '$_loc'.$num;
-										$num++;
-									}
-									$data[$i][1] = $this->locvarZval[$key][$funcName][$data[$i][1]];
+									$str .= $data[$i][1];
+									break;
 								}
-								$str .= $data[$i][1];
-								break;
 							}
-							
-							
 							
 							if(!isset($this->varZval[$data[$i][1]])){
 								$this->varZval[$data[$i][1]] = '$_glo'.$this->num;
@@ -273,23 +280,26 @@
 							break;
 						case T_FUNCTION:
 							$str .= $data[$i][1];
-							$str .= $data[$i+1][1];
+							if($data[$i+1][0] == T_WHITESPACE){
+								$str .= $data[$i+1][1];
+							}elseif($data[$i+1][0] == '('){
+								$str .= $data[$i+1];
+							}
 							
-							if(!is_string($data[$i+2]) && is_string('(')){
+							if(!is_string($data[$i+2]) && $data[$i+2][0] == T_STRING){
 								$str .= $data[$i+2][1];
 								$funcName = $data[$i+2][1];
 								$i+=2;
+								
+								if($classFlag){
+									$this->funcZval[$className][$funcName] = 'loc'.$num;
+								}else{
+									$this->funcZval[0][$funcName] = 'glo'.$this->num;
+									$this->num++;
+								}
 							}else{
 								$i++;
 							}
-							
-							if($classFlag){
-								$this->funcZval[$className][$funcName] = 'loc'.$num;
-							}else{
-								$this->funcZval[0][$funcName] = 'glo'.$this->num;
-								$this->num++;
-							}
-							
 							$funcFlag = true;
 							
 							break;
@@ -301,6 +311,22 @@
 							$className = $data[$i+2][1];
 							$this->classZval[$key][] = $className;
 							$i+=2;
+							break;
+						case T_USE:
+							$str .= $data[$i][1];
+							if(!is_string($data[$i+1]) && $data[$i+1][0] == T_WHITESPACE){
+								$str .= $data[$i+1][1];
+								$i++;
+								if($data[$i+1] == '('){
+									$useflag = true;
+									$str .= $data[$i+1];
+									$i++;
+								}
+							}elseif($data[$i+1] == '('){
+								$useflag = true;
+								$str .= $data[$i+1];
+								$i++;
+							}
 							break;
 						default:
 							$str .= $data[$i][1];
@@ -320,7 +346,7 @@
 				$file = fopen($url,'w') or die('Unable to open file!');
 				$flag=fwrite($file,$content);
 				if(!$flag){
-					echo 'æ–‡ä»¶æ— æ³•è¢«å†™å…¥';
+					echo 'ÎÄ¼þÎÞ·¨±»Ð´Èë';
 				}
 				fclose($file);
 			}
@@ -338,16 +364,18 @@
 			$file = fopen($this->rootPath.DIRECTORY_SEPARATOR.'bak.txt','w') or die('Unable to open file!');
 			$flag=fwrite($file,$content);
 			if(!$flag){
-				echo 'æ–‡ä»¶æ— æ³•è¢«å†™å…¥';
+				echo 'ÎÄ¼þÎÞ·¨±»Ð´Èë';
 			}
 			fclose($file);
 			
 			$this->deldir($this->rootPath.DIRECTORY_SEPARATOR.$this->replacePath);
 			
 			echo "<pre>";
-			echo "æ··æ·†å˜é‡åæ€»æ•°å…±".count($this->varZval).'<br>';
-			echo "æ··æ·†å‡½æ•°åæ€»æ•°å…±".count($this->funcZval[0]).'<br>';
-			echo "æ··æ·†æ–‡ä»¶æ€»æ•°å…±".count($this->fileZval).'<br>';
+			echo "»ìÏý±äÁ¿Ãû×ÜÊý¹²".count($this->varZval).'<br>';
+			if(isset($this->funcZval[0])){
+			echo "»ìÏýº¯ÊýÃû×ÜÊý¹²".count($this->funcZval[0]).'<br>';
+			}
+			echo "»ìÏýÎÄ¼þ×ÜÊý¹²".count($this->fileZval).'<br>';
 		}
 		
 		private function funcReplace($content,$key){
@@ -424,6 +452,5 @@
 		}
 	}
 	
-
 	$obj = file_Confuse::getInstance();
 ?>
