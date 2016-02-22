@@ -1,0 +1,4 @@
+set @tableName:=concat('dname.','table');
+set @xxoo:=concat('select * from ',  @tableName);
+prepare my_sql from  @xxoo;
+execute my_sql;
